@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local File Share</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+            padding: 30px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .header p {
+            color: #666;
+            margin-top: 10px;
+            font-size: 1.1em;
+        }
+        
+        .upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+            margin-bottom: 30px;
+            background: #fafafa;
+        }
+        
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #f0f0ff;
+            transform: scale(1.02);
+        }
+        
+        .upload-area input[type="file"] {
+            display: none;
+        }
+        
+        .upload-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.1em;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        
+        .upload-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .file-list {
+            margin-top: 30px;
+        }
+        
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .file-item:hover {
+            transform: translateX(5px);
+            background: #e9ecef;
+        }
+        
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .file-icon {
+            font-size: 2em;
+            flex-shrink: 0;
+        }
+        
+        .file-name {
+            font-weight: 500;
+            color: #333;
+            word-break: break-all;
+            overflow-wrap: break-word;
+            max-width: 100%;
+        }
+        
+        .file-size {
+            color: #666;
+            font-size: 0.9em;
+            flex-shrink: 0;
+            margin-left: 10px;
+        }
+        
+        .file-actions {
+            display: flex;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+        
+        .btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9em;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-download {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-download:hover {
+            background: #218838;
+            transform: scale(1.05);
+        }
+        
+        .btn-delete {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn-delete:hover {
+            background: #c82333;
+            transform: scale(1.05);
+        }
+        
+        /* НОВАЯ КНОПКА - Скачать все */
+        .btn-download-all {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 12px 30px;
+            font-weight: 600;
+            font-size: 1em;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-download-all:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 5px 20px rgba(245, 87, 108, 0.4);
+        }
+        
+        .btn-download-all:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-clear-all {
+            background: #ffc107;
+            color: #333;
+            padding: 10px 25px;
+            font-weight: 500;
+        }
+        
+        .btn-clear-all:hover {
+            background: #e0a800;
+            transform: scale(1.05);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .empty-state .emoji {
+            font-size: 4em;
+            display: block;
+            margin-bottom: 20px;
+        }
+        
+        .info-text {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .info-text code {
+            background: #e9ecef;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            word-break: break-all;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #e9ecef;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 10px;
+            display: none;
+        }
+        
+        .progress-bar.active {
+            display: block;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .file-date {
+            color: #999;
+            font-size: 0.8em;
+            margin-left: 10px;
+        }
+        
+        .header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 20px 0;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .header-actions h2 {
+            margin: 0;
+        }
+        
+        .header-actions .actions-right {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .file-count {
+            background: #667eea;
+            color: white;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            margin-left: 10px;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .file-item {
+                flex-direction: column;
+                gap: 10px;
+                align-items: stretch;
+            }
+            
+            .file-actions {
+                justify-content: center;
+            }
+            
+            .header h1 {
+                font-size: 1.8em;
+            }
+            
+            .file-info {
+                flex-wrap: wrap;
+            }
+            
+            .file-size {
+                margin-left: 0;
+            }
+            
+            .header-actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .header-actions .actions-right {
+                justify-content: center;
+            }
+            
+            .btn-download-all {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Передача файлов по локальной сети</h1>
+            <p>Обмен файлами по локальной сети</p>
+        </div>
+        
+        <div class="upload-area" id="dropZone">
+            <div style="font-size: 3em; margin-bottom: 10px;">📤</div>
+            <p style="margin-bottom: 15px; color: #666;">
+                Перетащите файлы сюда или нажмите для выбора
+            </p>
+            <input type="file" id="fileInput" multiple>
+            <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                Выбрать файлы
+            </button>
+            <div class="progress-bar" id="progressBar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </div>
+        
+        <div class="header-actions">
+            <h2>
+                📂 Загруженные файлы
+                <span class="file-count" id="fileCount">0</span>
+            </h2>
+            <div class="actions-right">
+                <button class="btn-download-all" id="downloadAllBtn" onclick="downloadAllFiles()">
+                    📦 Скачать все
+                </button>
+                <button class="btn btn-clear-all" onclick="clearAllFiles()">🗑️ Очистить все</button>
+            </div>
+        </div>
+        
+        <div class="file-list" id="fileList">
+            <div class="empty-state">
+                <span class="emoji">📭</span>
+                <p>Пока нет загруженных файлов</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Получаем URL для доступа с других устройств
+        function showConnectionInfo() {
+            const urlElement = document.getElementById('localUrl');
+            const currentUrl = window.location.href;
+            urlElement.textContent = currentUrl;
+        }
+        showConnectionInfo();
+
+        // Элементы
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileList = document.getElementById('fileList');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+        const downloadAllBtn = document.getElementById('downloadAllBtn');
+        const fileCount = document.getElementById('fileCount');
+
+        // Загрузка списка файлов
+        async function loadFiles() {
+            try {
+                const response = await fetch('/files');
+                if (!response.ok) throw new Error('Ошибка загрузки списка');
+                const files = await response.json();
+                renderFiles(files);
+                updateFileCount(files.length);
+                updateDownloadAllButton(files.length);
+            } catch (error) {
+                console.error('Ошибка загрузки списка файлов:', error);
+                fileList.innerHTML = `
+                    <div class="empty-state">
+                        <span class="emoji">⚠️</span>
+                        <p>Ошибка загрузки списка файлов</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Обновление счетчика файлов
+        function updateFileCount(count) {
+            fileCount.textContent = count;
+        }
+
+        // Обновление кнопки "Скачать все"
+        function updateDownloadAllButton(count) {
+            if (count === 0) {
+                downloadAllBtn.disabled = true;
+                downloadAllBtn.textContent = '📦 Нет файлов';
+            } else {
+                downloadAllBtn.disabled = false;
+                downloadAllBtn.textContent = `📦 Скачать все (${count})`;
+            }
+        }
+
+        // Отображение файлов
+        function renderFiles(files) {
+            if (files.length === 0) {
+                fileList.innerHTML = `
+                    <div class="empty-state">
+                        <span class="emoji">📭</span>
+                        <p>Пока нет загруженных файлов</p>
+                    </div>
+                `;
+                return;
+            }
+
+            fileList.innerHTML = files.map(file => {
+                const ext = file.name.split('.').pop().toLowerCase();
+                let icon = '📄';
+                if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico'].includes(ext)) icon = '🖼️';
+                else if (['pdf'].includes(ext)) icon = '📕';
+                else if (['doc', 'docx'].includes(ext)) icon = '📘';
+                else if (['xls', 'xlsx'].includes(ext)) icon = '📊';
+                else if (['ppt', 'pptx'].includes(ext)) icon = '📙';
+                else if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) icon = '📦';
+                else if (['mp4', 'avi', 'mkv', 'mov', 'wmv', 'flv'].includes(ext)) icon = '🎬';
+                else if (['mp3', 'wav', 'flac', 'aac', 'ogg'].includes(ext)) icon = '🎵';
+                else if (['txt', 'log'].includes(ext)) icon = '📝';
+                else if (['exe', 'msi'].includes(ext)) icon = '⚙️';
+                
+                const date = new Date(file.uploadedAt);
+                const dateStr = date.toLocaleString('ru-RU');
+                const encodedName = encodeURIComponent(file.originalName);
+                
+                return `
+                    <div class="file-item">
+                        <div class="file-info">
+                            <span class="file-icon">${icon}</span>
+                            <span class="file-name">${escapeHtml(file.name)}</span>
+                            <span class="file-size">(${file.sizeFormatted})</span>
+                            <span class="file-date">${dateStr}</span>
+                        </div>
+                        <div class="file-actions">
+                            <a href="${file.url}" download="${encodeURIComponent(file.name)}" class="btn btn-download">⬇️ Скачать</a>
+                            <button class="btn btn-delete" onclick="deleteFile('${encodedName}')">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 📦 НОВАЯ ФУНКЦИЯ: Скачивание всех файлов
+        async function downloadAllFiles() {
+            try {
+                // Показываем индикатор загрузки
+                downloadAllBtn.disabled = true;
+                downloadAllBtn.textContent = '⏳ Создание архива...';
+                
+                // Делаем запрос на сервер для скачивания архива
+                const response = await fetch('/download-all');
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Ошибка загрузки');
+                }
+                
+                // Получаем имя файла из заголовков
+                const contentDisposition = response.headers.get('Content-Disposition');
+                let filename = 'files.zip';
+                if (contentDisposition) {
+                    const match = contentDisposition.match(/filename\*=UTF-8''(.+)/);
+                    if (match) {
+                        filename = decodeURIComponent(match[1]);
+                    }
+                }
+                
+                // Создаем blob и скачиваем
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                
+                console.log(`✅ Скачан архив: ${filename}`);
+            } catch (error) {
+                console.error('Ошибка скачивания:', error);
+                alert('Ошибка при создании архива: ' + error.message);
+            } finally {
+                // Восстанавливаем кнопку
+                const files = await fetch('/files').then(r => r.json());
+                updateDownloadAllButton(files.length);
+            }
+        }
+
+        // Загрузка файлов
+        async function uploadFiles(files) {
+            progressBar.classList.add('active');
+            let uploaded = 0;
+            const total = files.length;
+            
+            for (const file of files) {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                try {
+                    const response = await fetch('/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                        uploaded++;
+                        const progress = (uploaded / total) * 100;
+                        progressFill.style.width = progress + '%';
+                        console.log(`✅ Загружен: ${result.file.name}`);
+                    } else {
+                        console.error('Ошибка загрузки:', result.error);
+                    }
+                } catch (error) {
+                    console.error('Ошибка загрузки файла:', error);
+                }
+            }
+            
+            setTimeout(() => {
+                progressBar.classList.remove('active');
+                progressFill.style.width = '0%';
+                loadFiles();
+            }, 500);
+        }
+
+        // Обработка загрузки через drag & drop
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                uploadFiles(files);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const files = e.target.files;
+            if (files.length > 0) {
+                uploadFiles(files);
+            }
+            fileInput.value = '';
+        });
+
+        // Удаление файла
+        async function deleteFile(filename) {
+            const displayName = decodeURIComponent(filename);
+            if (!confirm(`Удалить файл "${displayName}"?`)) return;
+            
+            try {
+                const response = await fetch(`/files/${filename}`, { 
+                    method: 'DELETE' 
+                });
+                if (response.ok) {
+                    loadFiles();
+                } else {
+                    alert('Ошибка удаления файла');
+                }
+            } catch (error) {
+                console.error('Ошибка удаления:', error);
+                alert('Ошибка удаления файла');
+            }
+        }
+
+        // Очистка всех файлов
+        async function clearAllFiles() {
+            const files = await fetch('/files').then(r => r.json());
+            if (files.length === 0) {
+                alert('Нет файлов для удаления');
+                return;
+            }
+            
+            if (!confirm(`Удалить все ${files.length} файлов?`)) return;
+            
+            try {
+                const response = await fetch('/files', { method: 'DELETE' });
+                if (response.ok) {
+                    loadFiles();
+                } else {
+                    alert('Ошибка очистки');
+                }
+            } catch (error) {
+                console.error('Ошибка очистки:', error);
+                alert('Ошибка очистки');
+            }
+        }
+
+        // Загружаем список файлов при старте
+        loadFiles();
+
+        // Обновляем список каждые 5 секунд
+        setInterval(loadFiles, 5000);
+    </script>
+</body>
+</html>
